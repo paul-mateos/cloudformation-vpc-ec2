@@ -1,0 +1,26 @@
+[
+	{
+		"ParameterKey": "KeyPair",
+		"ParameterValue": "belongtest"
+	},	
+	{
+		"ParameterKey": "PMOWNIP",
+		"ParameterValue": "0.0.0.0/0"
+	},
+	{
+		"ParameterKey": "PMPrivateSubnet1CIDR",
+		"ParameterValue": "10.0.3.0/24"
+	},
+	{
+		"ParameterKey": "PMPublicSubnet1CIDR",
+		"ParameterValue": "10.0.1.0/24"
+	},
+	{
+		"ParameterKey": "PMTemplateURL",
+		"ParameterValue": "https://s3.amazonaws.com/cf-templates-belongtest-paulmateos"
+	},
+	{
+		"ParameterKey": "PMVpcCIDR",
+		"ParameterValue": "10.0.0.0/16"
+	}
+]

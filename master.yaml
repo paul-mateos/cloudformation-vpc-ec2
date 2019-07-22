@@ -1,0 +1,110 @@
+
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+    This is a master template to create a VPC and EC2 infrastructure.
+
+    Author: paulmateos@pufferfish.solutions
+
+###############################################################################################################
+
+Parameters: 
+
+  PMOWNIP:
+    Description: "Update this with your own office/home public ip address"
+    Type: "String"
+
+  PMTemplateURL:
+    Description: "S3 Cloudformation Template Bucket"
+    Type: "String"
+
+  PMVpcCIDR:
+    Description: "VPC CIDR."
+    Type: "String"
+
+  PMPublicSubnet1CIDR:
+    Description: "VPC Public Subnet 1."
+    Type: "String"
+
+  PMPrivateSubnet1CIDR:
+    Description: "VPC Private Subnet 1."
+    Type: "String"
+  KeyPair:
+    Description: "KeyPair for SSH"
+    Type: "String"
+###############################################################################################################
+
+Resources:
+
+  MyIAMRole:
+    Type: "AWS::CloudFormation::Stack"
+    Properties:
+      TemplateURL: !Sub "${PMTemplateURL}/vpc-iam.yaml"
+      TimeoutInMinutes: '5'
+      Parameters:
+        PMServerEnv: !Ref "AWS::StackName"
+
+  MyVPC:
+    Type: "AWS::CloudFormation::Stack"
+    DependsOn:
+    - "MyIAMRole"
+    Properties:
+      TemplateURL: !Sub "${PMTemplateURL}/vpc-vpc.yaml"
+      TimeoutInMinutes: '5'
+      Parameters:
+        PMServerEnv: !Ref "AWS::StackName"
+        PMVpcCIDR: !Ref "PMVpcCIDR"
+        PMPublicSubnet1CIDR: !Ref "PMPublicSubnet1CIDR"
+        PMPrivateSubnet1CIDR: !Ref "PMPrivateSubnet1CIDR"
+        PMFlowLogRole: !GetAtt "MyIAMRole.Outputs.VPCFlowLogRoleArn"
+
+  MyNACL:
+    Type: "AWS::CloudFormation::Stack"
+    DependsOn:
+    - "MyVPC"
+    Properties:
+      TemplateURL: !Sub "${PMTemplateURL}/vpc-nacl.yaml"
+      TimeoutInMinutes: '5'
+      Parameters:
+        PMServerEnv: !Ref "AWS::StackName"
+        PMOWNIP: !Ref "PMOWNIP"
+        PMVpcCIDR: !Ref "PMVpcCIDR"
+        PMVPC: !GetAtt "MyVPC.Outputs.VPC"
+        PMPrivateSubnet1CIDR: !Ref "PMPrivateSubnet1CIDR"
+        PMPublicNACL: !GetAtt "MyVPC.Outputs.MyPublicNetworkACL"
+        PMPrivateNACL: !GetAtt "MyVPC.Outputs.MyPrivateNetworkACL"
+
+  MyEC2:
+    Type: "AWS::CloudFormation::Stack"
+    DependsOn:
+    - "MyNACL"
+    Properties:
+      TemplateURL: !Sub "${PMTemplateURL}/vpc-ec2.yaml"
+      TimeoutInMinutes: '5'
+      Parameters:
+        PMPrivateSubnet: !GetAtt "MyVPC.Outputs.PrivateSubnet1"
+        PMServerEnv: !Ref "AWS::StackName"
+        KeyPair: !Ref "KeyPair"
+        # MyVPC: !GetAtt "MyVPC.Outputs.VPC"
+        MyVPCSG: !GetAtt "MyVPC.Outputs.VPCSG"
+
+  MyELB:
+    Type: "AWS::CloudFormation::Stack"
+    DependsOn:
+      - "MyEC2"
+    Properties:
+      TemplateURL: !Sub "${PMTemplateURL}/vpc-elb.yaml"
+      TimeoutInMinutes: '5'
+      Parameters:
+        PMEc2Instance: !GetAtt "MyEC2.Outputs.IntanceId"
+        PMPublicSubnet: !GetAtt "MyVPC.Outputs.PublicSubnet1" 
+        PMServerEnv: !Ref "AWS::StackName"
+        MyVPCSG: !GetAtt "MyVPC.Outputs.VPCSG"
+
+Outputs:
+
+  MyStackName:
+    Description: "A reference to Cloudformation Stack Name"
+    Value: !Ref "AWS::StackName"
+    Export:
+      Name: !Sub "${AWS::StackName}-StackName"
