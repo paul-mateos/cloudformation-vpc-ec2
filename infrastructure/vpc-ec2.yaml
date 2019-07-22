@@ -1,0 +1,71 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Test Template DeepakNautiyal
+
+Parameters:
+  MyVPCSG:
+    Description: Select VPCSG
+    Type: "String"
+  KeyPair:
+    Description: "Key Pair to SSH into the EC2 instance"
+    Type: "String"
+  PMServerEnv:
+    Description: "Server Env"
+    Type: "String"
+  PMPrivateSubnet:
+    Description: "Private Subnet"
+    Type: "String"
+
+
+Resources:
+  MyEC2Instance:
+    Type: "AWS::EC2::Instance"
+    # Metadata:
+    #     AWS::CloudFormation::Init:
+    #       configSets:
+    #         ascending:
+    #           - "config1"
+    #       config1:
+    #         commands:
+    #           uodateYum:
+    #             command: "yum update -y"
+    #           installHttpd:
+    #             command: "yum install httpd -y"
+    #           startHttpd:
+    #             command: "service httpd start"
+    #           testHttpd:
+    #             command: "chkconfig httpd on"
+
+    Properties:
+      ImageId: ami-075caa3491def750b
+      InstanceType: t2.micro
+      KeyName: !Ref KeyPair
+      SubnetId: !Ref PMPrivateSubnet
+      SecurityGroupIds:
+        - Ref: MyVPCSG 
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+          - "\n"
+          - - "#!/bin/bash -v"
+            - "rm /etc/localtime"
+            - "ln -s /usr/share/zoneinfo/AUS/Sydney /etc/localtime"
+
+            - "sudo yum update -y"
+            - "sudo yum install httpd -y"
+            - "sudo service httpd start"
+            - "sudo chkconfig httpd on"
+
+            - "wget -P /var/www/html/ http://belong-coding-challenge.s3.amazonaws.com/belong-test.html"
+      Tags: 
+      - Key: "Name"
+        Value: !Sub "${PMServerEnv}-MyEC2"
+
+Outputs: 
+
+  IntanceId: 
+    Description: "A reference to the created EC2"
+    Value: !Ref "MyEC2Instance"
+    Export:
+      Name: !Sub "${PMServerEnv}-EC2Id"

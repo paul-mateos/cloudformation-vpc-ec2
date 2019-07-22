@@ -1,0 +1,50 @@
+# Template to create ELB 
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+    This template to deploys ELB
+   
+Parameters:
+  PMEc2Instance: 
+    Description: "VPC Flow Log Role Description"
+    Type: "String"
+  PMPublicSubnet:
+    Description: "Public Subnet"
+    Type: "String"
+  MyVPCSG:
+    Description: "VPC SG"
+    Type: "String"
+  PMServerEnv:
+    Description: "Server Environment name."
+    ConstraintDescription: "Choose an Environment from the drop down"
+    Type: "String"     
+
+Resources:
+
+  MyLoadBalancer:
+    Type: "AWS::ElasticLoadBalancing::LoadBalancer"
+    Properties:
+      Subnets:
+        - Ref: "PMPublicSubnet"
+      #   Fn::GetAZs: "PMPublicSubnet"
+      Instances:
+        - Ref: PMEc2Instance
+      Listeners:
+        - LoadBalancerPort: "80"
+          InstancePort: "80"
+          Protocol: HTTP
+        - LoadBalancerPort: "22"
+          InstancePort: "22"
+          Protocol: TCP  
+      HealthCheck:
+          Target: "HTTP:80/belong-test.html"
+          HealthyThreshold: "3"
+          UnhealthyThreshold: "4"
+          Interval: "5"
+          Timeout: "3"
+      SecurityGroups:
+        - Ref: MyVPCSG
+      Tags:
+      - Key: "Name"
+        Value: "my-LB"
+        Value: !Sub "${PMServerEnv}-LB"
